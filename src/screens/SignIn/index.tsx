@@ -9,10 +9,14 @@ import {
 import * as Yup from 'yup'
 
 import { useTheme } from 'styled-components'
+import { useNavigation } from '@react-navigation/native'
+import { useAuth } from '../../hooks/auth'
 
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { PasswordInput } from '../../components/PasswordInput'
+
+import { database } from '../../database'
 
 import {
     Container,
@@ -30,6 +34,10 @@ export function SignIn() {
 
     const theme = useTheme()
 
+    const navigation = useNavigation<any>()
+
+    const { signIn } = useAuth()
+
     async function handleSignIn() {
         try {
             const schema = Yup.object().shape({
@@ -40,10 +48,10 @@ export function SignIn() {
                     .required('Senha é obrigatória')
             })
 
-            schema.validate({ email, password })
-            Alert.alert('Tudo certo')
+            await schema.validate({ email, password })
 
             //Fazer login
+            signIn({ email, password })
         } catch (error) {
             console.log(typeof (error))
             if (error instanceof Yup.ValidationError) {
@@ -55,6 +63,10 @@ export function SignIn() {
                 )
             }
         }
+    }
+
+    function handleNewAccount() {
+        navigation.navigate('SignUpFirstStep')
     }
 
     return (
@@ -92,7 +104,6 @@ export function SignIn() {
                         <PasswordInput
                             iconName='lock'
                             placeholder='Senha'
-                            secureTextEntry
                             onChangeText={setPassword}
                             value={password}
                         />
@@ -107,7 +118,7 @@ export function SignIn() {
                         />
                         <Button
                             title='Criar conta gratuíta'
-                            onPress={() => { }}
+                            onPress={handleNewAccount}
                             enabled={true}
                             loading={false}
                             color={theme.colors.background_secundary}

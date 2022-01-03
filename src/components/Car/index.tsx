@@ -2,7 +2,7 @@ import React from 'react'
 import { RectButtonProps } from 'react-native-gesture-handler'
 
 import { getAccessoryIcon } from '../../utils/getAccessoryIcon'
-import { CarDTO } from '../../dtos/CarDTO'
+import { Car as ModelCar } from '../../database/model/Car'
 
 import {
     Container,
@@ -19,7 +19,7 @@ import {
 
 
 interface Props extends RectButtonProps {
-    data: CarDTO
+    data: ModelCar
 }
 
 
@@ -33,8 +33,8 @@ export function Car({ data, ...rest }: Props) {
 
                 <About>
                     <Rent>
-                        <Period>{data.rent.period}</Period>
-                        <Price>{`R$ ${data.rent.price}`}</Price>
+                        <Period>{data.period}</Period>
+                        <Price>{`R$ ${data.price}`}</Price>
                     </Rent>
 
                     <Type>

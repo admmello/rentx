@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { StatusBar, StyleSheet, BackHandler } from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+import { StatusBar, StyleSheet } from 'react-native'
 import { RFValue } from 'react-native-responsive-fontsize'
+import { synchronize } from '@nozbe/watermelondb/sync'
+import { useNetInfo } from '@react-native-community/netinfo'
 import { Ionicons } from '@expo/vector-icons'
 import { RectButton, PanGestureHandler } from 'react-native-gesture-handler'
 import Animated, {
@@ -11,8 +12,11 @@ import Animated, {
     withSpring, //lida com física
 } from 'react-native-reanimated'
 
+import { useNavigation } from '@react-navigation/native'
 import { useTheme } from 'styled-components'
 
+import { database } from '../../database'
+import { Car as ModelCar } from '../../database/model/Car'
 import { Car } from '../../components/Car'
 import { LoadAnimation } from '../../components/LoadAnimation'
 import api from '../../services/api'
@@ -28,71 +32,99 @@ import {
     CarList,
 } from './styles'
 
-const ButtonAnimated = Animated.createAnimatedComponent(RectButton)
+// const ButtonAnimated = Animated.createAnimatedComponent(RectButton)
 
 export function Home() {
-    const [cars, setCars] = useState<CarDTO[]>([])
+    const [cars, setCars] = useState<ModelCar[]>([])
     const [loading, setLoading] = useState(true)
 
-    const positionX = useSharedValue(0)
-    const positionY = useSharedValue(0)
+    const netInfo = useNetInfo()
 
-    const myCarsButtonStyle = useAnimatedStyle(() => {
-        return {
-            transform: [
-                { translateX: positionX.value },
-                { translateY: positionY.value }
-            ]
-        }
-    })
+    // const positionX = useSharedValue(0)
+    // const positionY = useSharedValue(0)
 
-    const onGestureEvent = useAnimatedGestureHandler({
-        onStart(_, ctx: any) {
-            ctx.positionX = positionX.value
-            ctx.positionY = positionY.value
-        },
-        onActive(event, ctx: any) {
-            positionX.value = ctx.positionX + event.translationX
-            positionY.value = ctx.positionY + event.translationY
-        },
-        onEnd() {
-            positionX.value = withSpring(0)
-            positionY.value = withSpring(0)
-        }
-    })
+    // const myCarsButtonStyle = useAnimatedStyle(() => {
+    //     return {
+    //         transform: [
+    //             { translateX: positionX.value },
+    //             { translateY: positionY.value }
+    //         ]
+    //     }
+    // })
+
+    // const onGestureEvent = useAnimatedGestureHandler({
+    //     onStart(_, ctx: any) {
+    //         ctx.positionX = positionX.value
+    //         ctx.positionY = positionY.value
+    //     },
+    //     onActive(event, ctx: any) {
+    //         positionX.value = ctx.positionX + event.translationX
+    //         positionY.value = ctx.positionY + event.translationY
+    //     },
+    //     onEnd() {
+    //         positionX.value = withSpring(0)
+    //         positionY.value = withSpring(0)
+    //     }
+    // })
 
     const navigation = useNavigation<any>()
-    const theme = useTheme()
+    // const theme = useTheme()
 
     function handleCarDetails(car: CarDTO) {
         navigation.navigate('CarDetails', { car })
     }
 
+    async function offlineSyncronize() {
+        await synchronize({
+            database,
+            pullChanges: async ({ lastPulledAt }) => {
+                const response = await api
+                    .get(`cars/sync/pull?lastPulledVersion=${lastPulledAt || 0}`)
 
-    function handleOpenMyCars() {
-        navigation.navigate('MyCars')
+                const { changes, latestVersion } = response.data
+                return { changes, timestamp: latestVersion }
+            },
+            pushChanges: async ({ changes }) => {
+                const user = changes.users
+                await api.post('/users/sync', user)
+            }
+        })
     }
 
+    // function handleOpenMyCars() {
+    //     navigation.navigate('MyCars')
+    // }
+
     useEffect(() => {
+        let isMounted = true
         async function fetchCars() {
             try {
-                const response = await api.get('/cars')
-                setCars(response.data)
+                const carCollection = database.get<ModelCar>('cars')
+                const cars = await carCollection.query().fetch()
+
+                if (isMounted) {
+                    setCars(cars)
+                }
             } catch (error) {
                 console.log(error)
             } finally {
-                setLoading(false)
+                if (isMounted) {
+                    setLoading(false)
+                }
             }
         }
 
         fetchCars()
+        return () => {
+            isMounted = false
+        }
     }, [])
 
     useEffect(() => {
-        BackHandler.addEventListener('hardwareBackPress', () => {
-            return true
-        })
-    }, [])
+        if (netInfo.isConnected === true) {
+            offlineSyncronize()
+        }
+    }, [netInfo.isConnected])
 
     return (
         <Container>
@@ -128,7 +160,7 @@ export function Home() {
             }
 
             {/* lidar com o clica e arrasta */}
-            <PanGestureHandler onGestureEvent={onGestureEvent}>
+            {/* <PanGestureHandler onGestureEvent={onGestureEvent}>
                 <Animated.View
                     style={[
                         myCarsButtonStyle,
@@ -150,17 +182,17 @@ export function Home() {
                         />
                     </ButtonAnimated>
                 </Animated.View>
-            </PanGestureHandler>
+            </PanGestureHandler> */}
         </Container>
     )
 }
 
-const styles = StyleSheet.create({
-    button: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center'
-    }
-})
+// const styles = StyleSheet.create({
+//     button: {
+//         width: 60,
+//         height: 60,
+//         borderRadius: 30,
+//         justifyContent: 'center',
+//         alignItems: 'center'
+//     }
+// })

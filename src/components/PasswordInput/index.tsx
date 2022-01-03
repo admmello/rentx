@@ -23,7 +23,7 @@ export function PasswordInput({ iconName, value, ...rest }: InputProps) {
     const theme = useTheme()
     const [isPasswordVisible, setIsPasswordVisible] = useState(true)
 
-    function handlePassWordVisibilitycahnge() {
+    function handlePassWordVisibilitycChange() {
         setIsPasswordVisible(prevState => !prevState)
     }
 
@@ -51,9 +51,10 @@ export function PasswordInput({ iconName, value, ...rest }: InputProps) {
                 onBlur={handleInputBlur}
                 secureTextEntry={isPasswordVisible}
                 isFocused={isFocused}
+                autoCorrect={false}
                 {...rest} />
 
-            <BorderlessButton onPress={handlePassWordVisibilitycahnge}>
+            <BorderlessButton onPress={handlePassWordVisibilitycChange}>
                 <IconContainer isFocused={isFocused}>
                     <Feather
                         name={isPasswordVisible ? 'eye' : 'eye-off'}
