@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { useTheme } from 'styled-components'
 import { useNetInfo } from '@react-native-community/netinfo'
+import { useAuth } from '../../hooks/auth'
 
 import api from '../../services/api'
 import { getPlataformDate } from '../../utils/getPlataformDate'
@@ -45,6 +46,7 @@ import {
 } from './styles'
 
 
+
 interface Params {
     car: CarDTO
     dates: string[]
@@ -64,6 +66,7 @@ export function SchedulingDetails() {
     const route = useRoute()
     const { car, dates } = route.params as Params
     const netInfo = useNetInfo()
+    const { user } = useAuth()
 
     const rentalTotal = Number(dates.length * car.price)
 
@@ -71,12 +74,16 @@ export function SchedulingDetails() {
         setLoading(true)
 
         await api.post(`rentals`, {
-            user_id: 1,
+            user_id: user.id,
             car_id: car.id,
             start_date: new Date(dates[0]),
             end_date: new Date(dates[dates.length - 1]),
             total: rentalTotal
-        })
+        },
+            {
+                headers: { authorization: `Bearer ${user.token}` }
+            },
+        )
             .then(() => {
                 navigation.navigate('Confirmation', {
                     nextScreenRoute: 'Home',
@@ -84,8 +91,9 @@ export function SchedulingDetails() {
                     message: `Agora você só precisa ir\naté a concessionária da RENTX\npegar seu automóvel.`
                 })
             }) //outra forma de lidar com Promises
-            .catch(() => {
+            .catch((error) => {
                 setLoading(false)
+                console.log(error)
                 Alert.alert('Não foi possível confirmar o agendamento')
             })
     }
